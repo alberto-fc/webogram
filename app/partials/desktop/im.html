@@ -26,6 +26,33 @@
             </div>
 
             <ul class="nav nav-pills nav-stacked">
+              <li class="im_dialog_wrap" ng-if="searchPeer">
+                <a class="im_dialog im_dialog_searchpeer disabled" ng-mousedown="setSearchPeer()">
+
+                  <div class="im_dialog_meta pull-right">
+                    <div class="im_dialog_clear_searchpeer">
+                      <!-- <i class="icon icon-clear-searchpeer"></i> -->
+                      <i class="icon icon-search-clear"></i>
+                    </div>
+                  </div>
+
+                  <div class="im_dialog_photo pull-left" my-peer-photolink="searchPeer" img-class="im_dialog_photo" watch="true"></div>
+
+                  <div class="im_dialog_message_wrap">
+
+                    <div class="im_dialog_peer">
+                      <span my-peer-link="searchPeer"></span>
+                    </div>
+
+                    <div class="im_dialog_message">
+                      <span class="" my-i18n="conversation_search_peer"></span>
+                    </div>
+
+                  </div>
+
+                </a>
+
+              </li>
               <li class="im_dialog_wrap" my-dialog dialog-message="dialogMessage" ng-repeat="dialogMessage in dialogs track by dialogMessage.peerID" ng-class="{active: curDialog.peerID == dialogMessage.peerID}"></li>
             </ul>
 
@@ -128,6 +155,7 @@
                       <div my-arc-progress stroke="3" width="26"></div>
                     </div>
                     <div ng-switch-default class="im_history_typing" ng-show="historyState.typing.length > 0 &amp;&amp; !historyFilter.mediaType &amp;&amp; !state.empty" ng-switch="historyState.typing.length" my-i18n>
+                      <span ng-switch-when="0"></span>
                       <span ng-switch-when="1" my-i18n-format="im_one_typing"></span>
                       <span ng-switch-when="2" my-i18n-format="im_two_typing"></span>
                       <span ng-switch-default my-i18n-format="im_many_typing"></span>
@@ -167,6 +195,7 @@
                 <a class="btn btn-primary im_edit_forward_btn" ng-click="selectedForward()" ng-class="{disabled: !selectedCount}" ng-disabled="!selectedCount" my-i18n-format="im_forward"></a>
                 <a class="btn btn-primary im_edit_delete_btn" ng-click="selectedDelete()" ng-class="{disabled: !selectedCount}" ng-disabled="!selectedCount" my-i18n-format="im_delete" ng-show="historyState.canDelete"></a>
                 <a class="btn btn-primary im_edit_reply_btn" ng-click="selectedReply()" ng-show="selectedCount == 1 &amp;&amp; historyState.canReply" my-i18n="im_reply"></a>
+                <a class="btn btn-primary im_edit_reply_btn" ng-click="selectedEdit()" ng-show="selectedCount == 1 &amp;&amp; historyState.canEdit" my-i18n="im_edit"></a>
                 <my-i18n-param name="count"><strong class="im_selected_count" ng-show="selectedCount > 0" ng-bind="selectedCount"></strong></my-i18n-param>
               </div>
             </div>
@@ -175,7 +204,7 @@
 
               <div class="im_send_form_wrap1">
 
-                <div class="im_send_form_wrap clearfix" ng-controller="AppImSendController" ng-class="{im_send_reply_form_wrap: draftMessage.replyToMessage != null}">
+                <div class="im_send_form_wrap clearfix" ng-controller="AppImSendController" ng-class="{im_send_reply_form_wrap: draftMessage.replyToMsgID > 0}">
 
                   <a class="pull-right im_panel_peer_photo" my-peer-photolink="historyPeer.id" img-class="im_panel_peer_photo" watch="true" ng-show="!draftMessage.isBroadcast">
                     <i class="icon im_panel_peer_online" ng-show="historyPeer.id > 0 &amp;&amp; historyPeer.data.status._ == 'userStatusOnline'"></i>
@@ -186,9 +215,9 @@
 
                     <div class="im_send_form_inline_results" my-inline-results="inlineResults"></div>
 
-                    <div class="im_send_reply_wrap" ng-if="draftMessage.replyToMessage != null">
-                      <a class="im_send_reply_cancel" ng-mousedown="draftMessage.replyClear()"><i class="icon icon-reply-bar"></i><i class="icon icon-reply-bar"></i></a>
-                      <a class="im_message_reply_wrap" my-reply-message="draftMessage.replyToMessage" watch="true"></a>
+                    <div class="im_send_reply_wrap" ng-if="draftMessage.replyToMsgID > 0">
+                      <a class="im_send_reply_cancel" ng-mousedown="draftMessage.replyClear(true)"><i class="icon icon-reply-bar"></i><i class="icon icon-reply-bar"></i></a>
+                      <a class="im_message_reply_wrap" my-reply-message="draftMessage.replyToMsgID" watch="true" edit="{{draftMessage.type == 'edit'}}"></a>
                     </div>
 
                     <div class="im_send_reply_wrap im_send_fwds_wrap" ng-if="draftMessage.fwdMessages.length > 0">
@@ -201,7 +230,7 @@
                       <div class="composer_progress_icon_wrap">
                         <div class="composer_progress_icon" my-arc-progress width="22" stroke="2.5"></div>
                       </div>
-                      <a class="composer_command_btn" ng-show="!historyState.replyKeyboard && commands.list.length > 0 && (!draftMessage.text.length || draftMessage.text[0] == '/')" ng-mousedown="toggleSlash($event)" ng-class="draftMessage.text[0] == '/' ? 'active' : ''"><i class="icon icon-slash"></i></a>
+                      <a class="composer_command_btn" ng-show="!historyState.replyKeyboard && commands.list.length > 0 && (!draftMessage.text.length || draftMessage.text == '/')" ng-mousedown="toggleSlash($event)" ng-class="draftMessage.text[0] == '/' ? 'active' : ''"><i class="icon icon-slash"></i></a>
                       <a class="composer_keyboard_btn" ng-show="historyState.replyKeyboard._ == 'replyKeyboardMarkup'" ng-mousedown="replyKeyboardToggle($event)" ng-class="!historyState.replyKeyboard.pFlags.hidden ? 'active' : ''"><i class="icon icon-keyboard"></i></a>
 
                       <div class="im_send_dropbox_wrap" my-i18n="im_photos_drop_text"></div>
@@ -209,7 +238,10 @@
                     </div>
 
                     <div class="im_send_buttons_wrap clearfix">
-                      <button type="submit" class="btn btn-md im_submit nocopy" my-i18n="im_submit_message"></button>
+                      <button type="submit" class="btn btn-md im_submit" ng-class="draftMessage.type == 'edit' ? 'im_submit_edit' : 'im_submit_send'">
+                        <span class="im_submit_send_label nocopy" my-i18n="im_submit_message"></span>
+                        <span class="im_submit_edit_label nocopy" my-i18n="im_submit_edit_message"></span>
+                      </button>
 
                       <div class="im_attach pull-left">
                         <input type="file" class="im_attach_input" size="28" multiple="multiple" title="{{'im_attach_file_title' | i18n}}" />
